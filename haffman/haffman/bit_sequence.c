@@ -17,10 +17,10 @@ int bit_sequence_get_length(Bit_sequence * code)
 
 void bit_sequence_free(Bit_sequence * code)
 {
-	if (code != NULL)
+	while (code != NULL)
 	{
 		Bit_sequence * codePtr = code;
-		if (code->next != NULL) bit_sequence_free(code->next);
+		code = code->next;
 		free(codePtr);
 	}
 }
@@ -168,12 +168,25 @@ Bit_sequence * bit_sequence_concat(Bit_sequence * a, Bit_sequence * b)
 
 void bit_sequence_append_sequence(Bit_sequence ** a, Bit_sequence * b)
 {
-	Bit_sequence * oldA = *a;
-	*a = bit_sequence_concat(*a, b);
-	bit_sequence_free(oldA);
+	if (*a == NULL)
+	{
+		*a = bit_sequence_copy(b);
+	}
+	else if (b == NULL) return;
+	else
+	{
+		Bit_sequence * newB = bit_sequence_copy(b);
+
+		Bit_sequence * lastInA = *a;
+		while (lastInA->next != NULL)
+		{
+			lastInA = lastInA->next;
+		}
+		lastInA->next = newB;
+	}
 }
 
-void bit_sequence_save(Bit_sequence * a)
+void bit_sequence_save(Bit_sequence * a, FILE * output)
 {
 	unsigned char c = 0;
 	int in_char_position = 0;
@@ -183,16 +196,17 @@ void bit_sequence_save(Bit_sequence * a)
 		in_char_position++;
 		if (in_char_position == 8)
 		{
-			printf("%c", c);
+			fprintf(output, "%c", c);
 			c = 0;
 			in_char_position = 0;
 		}
 		a = a->next;
+		//printf("%d\n", bit_sequence_get_length(a));
 	} while (a != NULL);
 
 	if (in_char_position > 0)
 	{
-		printf("%c", c);
+		fprintf(output, "%c", c);
 	}
 }
 

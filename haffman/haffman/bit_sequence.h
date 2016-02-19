@@ -31,6 +31,6 @@ Bit_sequence * bit_sequence_concat(Bit_sequence * a, Bit_sequence * b);
 
 void bit_sequence_append_sequence(Bit_sequence ** a, Bit_sequence * b);
 
-void bit_sequence_save(Bit_sequence * a);
+void bit_sequence_save(Bit_sequence * a, FILE * output);
 
 Bit_sequence * bit_sequence_load(FILE * f);

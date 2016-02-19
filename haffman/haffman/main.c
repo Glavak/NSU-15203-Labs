@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "bit_sequence.h"
 #include "item.h"
@@ -160,10 +161,10 @@ int is_text_contain_only_symbol(unsigned char * text, size_t symbols_count)
 	return 1;
 }
 
-void compress(FILE * f)
+void compress(FILE * input, FILE * output)
 {
 	size_t symbols_count;
-	unsigned char * text = read_string(f, &symbols_count);
+	unsigned char * text = read_string(input, &symbols_count);
 
 	// Don't try to compress empty string
 	if (symbols_count == 0) return;
@@ -184,6 +185,8 @@ void compress(FILE * f)
 
 		Bit_sequence ** codes = build_codes_from_tree(tree);
 
+		debug_print_code(codes);
+
 		// Serialize tree and compressed text
 		Bit_sequence * tree_serialized = item_to_sequence(tree);
 		Bit_sequence * text_serialized = NULL;
@@ -192,6 +195,7 @@ void compress(FILE * f)
 			bit_sequence_append_sequence(&text_serialized, codes[*text]);
 			text++;
 			symbols_count--;
+			//printf("%d\n", bit_sequence_get_length(text_serialized));
 		}
 
 		// Insert separator
@@ -208,13 +212,13 @@ void compress(FILE * f)
 		bit_sequence_free(text_serialized);
 	}
 
-	bit_sequence_save(result);
+	bit_sequence_save(result, output);
 	bit_sequence_free(result);
 }
 
-void decompress(FILE * f)
+void decompress(FILE * input, FILE * output)
 {
-	Bit_sequence * bits = bit_sequence_load(f);
+	Bit_sequence * bits = bit_sequence_load(input);
 
 	// Don't try to decompress empty data
 	if (bits == NULL) return;
@@ -226,7 +230,7 @@ void decompress(FILE * f)
 		unsigned char symbol = bit_sequence_pop_char(&bits);
 		unsigned char count = bit_sequence_pop_char(&bits);
 
-		for (char i = 0; i < count; i++) printf("%c", symbol);
+		for (char i = 0; i < count; i++) fprintf(output, "%c", symbol);
 
 		return;
 	}
@@ -240,26 +244,63 @@ void decompress(FILE * f)
 
 		while (bits != NULL)
 		{
-			printf("%c", decode_symbol(&bits, tree));
+			fprintf(output, "%c", decode_symbol(&bits, tree));
 		}
 	}
 }
 
-int main(void)
+void print_help(void)
 {
-	unsigned char mode;
-	scanf_s("%c\n", &mode);
+	printf("-c input output \t to compress\n-d input output \t to decompress");
+}
 
-	if (mode == 'c')
+int main(int argc, char *argv[])
+{
+	if (argc < 4)
+	{
+		print_help();
+	}
+
+	if (argv[1][0] == '-' && argv[1][1] == 'c')
 	{
 		// Compressing
-		printf("d\n");
-		compress(stdin, mode);
+		FILE * input, *output;
+		errno_t inErr = fopen_s(&input, argv[2], "rb");
+		errno_t outErr = fopen_s(&output, argv[3], "wb");
+		if (outErr || inErr)
+		{
+			printf("Error opening file\n");
+			print_help();
+		}
+		else
+		{
+			compress(input, output);
+			fclose(input);
+			fclose(output);
+		}
 	}
-	else if (mode == 'd')
+	else if (argv[1][0] == '-' && argv[1][1] == 'd')
 	{
 		// Decompressing
-		decompress(stdin);
+		FILE * input, *output;
+		errno_t inErr = fopen_s(&input, argv[2], "rb");
+		errno_t outErr = fopen_s(&output, argv[3], "wb");
+		if (inErr || outErr)
+		{
+			printf("Error opening file\n");
+			print_help();
+		}
+		else
+		{
+			decompress(input, output);
+			fclose(input);
+			fclose(output);
+		}
+	}
+	else
+	{
+		printf("Error: invalid argument\n");
+		print_help();
 	}
 }
 
