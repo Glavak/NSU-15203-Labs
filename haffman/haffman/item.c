@@ -27,34 +27,34 @@ Item * item_create_from_items(Item * i1, Item * i2)
 	return i;
 }
 
-Bit_sequence * item_to_sequence(Item * item)
+Bit_sequence * item_to_sequence(Item * item, int sequence_capacity)
 {
-	Bit_sequence * result = NULL;
+	Bit_sequence * result = bit_sequence_create(sequence_capacity);
 
 	if (item->isItem)
 	{
 		// Mark that it's item, and write it
-		bit_sequence_append(&result, 0);
-		bit_sequence_append_sequence(&result, bit_sequence_from_char(item->symbol));
+		bit_sequence_append(result, 0);
+		bit_sequence_append_char(result, item->symbol);
 	}
 	else
 	{
 		// Mark that it's node, and write it's children
-		bit_sequence_append(&result, 1);
-		bit_sequence_append_sequence(&result, item_to_sequence(item->left));
-		bit_sequence_append_sequence(&result, item_to_sequence(item->right));
+		bit_sequence_append(result, 1);
+		bit_sequence_append_sequence(result, item_to_sequence(item->left, sequence_capacity - 8));// TODO: leak
+		bit_sequence_append_sequence(result, item_to_sequence(item->right, sequence_capacity - 8));
 	}
 
 	return result;
 }
 
-Item * item_from_sequence(Bit_sequence ** code)
+Item * item_from_sequence(Bit_sequence * code)
 {
 	Item * new_item = malloc(sizeof(Item));
 
-	if ((*code)->current_bit == 1)
+	if (bit_sequence_get_first_bit(code) == 1)
 	{
-		*code = (*code)->next;
+		bit_sequence_remove_first_bit(code);
 		new_item->isItem = 0;
 		new_item->priority = 0;
 		new_item->left = item_from_sequence(code);
@@ -62,7 +62,7 @@ Item * item_from_sequence(Bit_sequence ** code)
 	}
 	else
 	{
-		*code = (*code)->next;
+		bit_sequence_remove_first_bit(code);
 		new_item->isItem = 1;
 		new_item->symbol = bit_sequence_pop_char(code);
 		new_item->priority = 0;

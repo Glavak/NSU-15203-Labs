@@ -6,6 +6,7 @@
 #include "bit_sequence.h"
 #include "item.h"
 #include "priority_queue.h"
+#include "tests.h"
 
 // Returns array of 256 ints, where array[i] is count of symbols (unsigned char)i
 int * get_symbol_frequencies(unsigned char * string, size_t symbols_count)
@@ -56,25 +57,25 @@ void build_codes_from_tree_helper(Item * tree_root, Bit_sequence * pre_code, Bit
 
 	if (tree_root->left != NULL)
 	{
-		bit_sequence_append(&pre_code, 1);
+		bit_sequence_append(pre_code, 1);
 		build_codes_from_tree_helper(tree_root->left, pre_code, codes);
-		bit_sequence_remove_last_bit(&pre_code);
+		bit_sequence_remove_last_bit(pre_code);
 	}
 	if (tree_root->right != NULL)
 	{
-		bit_sequence_append(&pre_code, 0);
+		bit_sequence_append(pre_code, 0);
 		build_codes_from_tree_helper(tree_root->right, pre_code, codes);
-		bit_sequence_remove_last_bit(&pre_code);
+		bit_sequence_remove_last_bit(pre_code);
 	}
 }
 
 // Returns array of 256 symbol codes, where array[i] is code for symbol (unsigned char)i
-Bit_sequence ** build_codes_from_tree(Item * tree_root)
+Bit_sequence ** build_codes_from_tree(Item * tree_root, int sequence_capacity)
 {
 	Bit_sequence ** result = malloc(sizeof(Bit_sequence *)*256);
-	for (size_t i = 0; i < 256; i++) result[i] = NULL;
+	for (size_t i = 0; i < 256; i++) result[i] = bit_sequence_create(sequence_capacity);
 
-	build_codes_from_tree_helper(tree_root, NULL, result);
+	build_codes_from_tree_helper(tree_root, bit_sequence_create(sequence_capacity), result);
 	return result;
 }
 
@@ -111,21 +112,17 @@ void debug_print_code(Bit_sequence ** a)
 {
 	for (size_t i = 0; i < 256; i++)
 	{
-		if (a[i] != NULL)
+		if (bit_sequence_get_length(a[i])>0)
 		{
 			Bit_sequence * current = a[i];
-			do
-			{
-				printf("%i", current->current_bit);
-				current = current->next;
-			} while (current != NULL);
+			bit_sequence_print(current);
 			printf(" - %c", i);
 			printf("\n");
 		}
 	}
 }
 
-unsigned char decode_symbol(Bit_sequence ** code, Item * tree)
+unsigned char decode_symbol(Bit_sequence * code, Item * tree)
 {
 	if (tree->isItem)
 	{
@@ -133,7 +130,7 @@ unsigned char decode_symbol(Bit_sequence ** code, Item * tree)
 	}
 	else
 	{
-		if ((*code)->current_bit == 1)
+		if (bit_sequence_get_first_bit(code) == 1)
 		{
 			bit_sequence_remove_first_bit(code);
 			return decode_symbol(code, tree->left);
@@ -169,51 +166,47 @@ void compress(FILE * input, FILE * output)
 	// Don't try to compress empty string
 	if (symbols_count == 0) return;
 
-	Bit_sequence * result = NULL;
+	Bit_sequence * result = bit_sequence_create((symbols_count+5)*8);
 
 	// Fix for files with single byte repeated some times
 	if (is_text_contain_only_symbol(text, symbols_count))
 	{
-		bit_sequence_append(&result, 0);
-		bit_sequence_append_sequence(&result, bit_sequence_from_char(text[0]));
+		bit_sequence_append(result, 0);
+		bit_sequence_append_char(result, text[0]);
 
-		bit_sequence_append_sequence(&result, bit_sequence_from_char((char)symbols_count));
+		bit_sequence_append_char(result, (char)symbols_count);
 	}
 	else
 	{
 		Item * tree = get_tree_root(text, symbols_count);
 
-		Bit_sequence ** codes = build_codes_from_tree(tree);
-
-		debug_print_code(codes);
+		Bit_sequence ** codes = build_codes_from_tree(tree, symbols_count*8);
 
 		// Serialize tree and compressed text
-		Bit_sequence * tree_serialized = item_to_sequence(tree);
-		Bit_sequence * text_serialized = NULL;
+		Bit_sequence * tree_serialized = item_to_sequence(tree, symbols_count*2*8);
+		Bit_sequence * text_serialized = bit_sequence_create(symbols_count * 8);
 		while (symbols_count > 0)
 		{
-			bit_sequence_append_sequence(&text_serialized, codes[*text]);
+			bit_sequence_append_sequence(text_serialized, codes[*text]);
 			text++;
 			symbols_count--;
-			//printf("%d\n", bit_sequence_get_length(text_serialized));
 		}
 
 		// Insert separator
 		int total_length = bit_sequence_get_length(tree_serialized) + bit_sequence_get_length(text_serialized) + 1;// + 1 is for 1-bit after next "while"
 		while (total_length % 8 != 0)
 		{
-			bit_sequence_append(&tree_serialized, 0);
+			bit_sequence_append(tree_serialized, 0);
 			total_length++;
 		}
-		bit_sequence_append(&tree_serialized, 1);
+		bit_sequence_append(tree_serialized, 1);
 
 		result = bit_sequence_concat(tree_serialized, text_serialized);
 		bit_sequence_free(tree_serialized);
 		bit_sequence_free(text_serialized);
 	}
 
-	bit_sequence_save(result, output);
-	bit_sequence_free(result);
+	bit_sequence_save_and_free(result, output);
 }
 
 void decompress(FILE * input, FILE * output)
@@ -221,14 +214,14 @@ void decompress(FILE * input, FILE * output)
 	Bit_sequence * bits = bit_sequence_load(input);
 
 	// Don't try to decompress empty data
-	if (bits == NULL) return;
+	if (bit_sequence_get_length(bits) == 0) return;
 
 	// If the tree contain single element
-	if (bits->current_bit == 0)
+	if (bit_sequence_get_first_bit(bits) == 0)
 	{
-		bit_sequence_remove_first_bit(&bits);
-		unsigned char symbol = bit_sequence_pop_char(&bits);
-		unsigned char count = bit_sequence_pop_char(&bits);
+		bit_sequence_remove_first_bit(bits);
+		unsigned char symbol = bit_sequence_pop_char(bits);
+		unsigned char count = bit_sequence_pop_char(bits);
 
 		for (char i = 0; i < count; i++) fprintf(output, "%c", symbol);
 
@@ -236,15 +229,15 @@ void decompress(FILE * input, FILE * output)
 	}
 	else
 	{
-		Item * tree = item_from_sequence(&bits);
+		Item * tree = item_from_sequence(bits);
 
 		// Skip separator
-		while (bits->current_bit == 0) bit_sequence_remove_first_bit(&bits);
-		bit_sequence_remove_first_bit(&bits);
+		while (bit_sequence_get_first_bit(bits) == 0) bit_sequence_remove_first_bit(bits);
+		bit_sequence_remove_first_bit(bits);
 
-		while (bits != NULL)
+		while (bit_sequence_get_length(bits) > 0)
 		{
-			fprintf(output, "%c", decode_symbol(&bits, tree));
+			fprintf(output, "%c", decode_symbol(bits, tree));
 		}
 	}
 }
@@ -256,6 +249,8 @@ void print_help(void)
 
 int main(int argc, char *argv[])
 {
+	run_tests();
+
 	if (argc < 4)
 	{
 		print_help();

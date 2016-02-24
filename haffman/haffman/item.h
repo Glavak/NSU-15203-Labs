@@ -17,6 +17,6 @@ Item * item_create_from_char(unsigned char c, int priority);
 
 Item * item_create_from_items(Item * i1, Item * i2);
 
-Bit_sequence * item_to_sequence(Item * item);
+Bit_sequence * item_to_sequence(Item * item, int sequence_capacity);
 
-Item * item_from_sequence(Bit_sequence ** code);
+Item * item_from_sequence(Bit_sequence * code);

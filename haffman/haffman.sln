@@ -7,12 +7,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "haffman", "haffman\haffman.
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Compress|Win32 = Compress|Win32
 		Debug|Win32 = Debug|Win32
+		Decompress|Win32 = Decompress|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Compress|Win32.ActiveCfg = Compress|Win32
+		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Compress|Win32.Build.0 = Compress|Win32
 		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Debug|Win32.ActiveCfg = Debug|Win32
 		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Debug|Win32.Build.0 = Debug|Win32
+		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Decompress|Win32.ActiveCfg = Decompress|Win32
+		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Decompress|Win32.Build.0 = Decompress|Win32
 		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Release|Win32.ActiveCfg = Release|Win32
 		{5E21993A-9CF4-47D0-A9BD-80ED0F9FE3B0}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

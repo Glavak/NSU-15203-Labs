@@ -1,232 +1,166 @@
 #pragma once
 
 #include <stdlib.h>
+#include <assert.h>
 
 #include "bit_sequence.h"
 
+Bit_sequence * bit_sequence_create(int capacity)
+{
+	assert(capacity % 8 == 0);
+
+	Bit_sequence * sequence = malloc(sizeof(Bit_sequence));
+	sequence->bytes = malloc(sizeof(unsigned char) * (capacity / 8));
+	sequence->bits_capacity = capacity;
+	sequence->bits_count = 0;
+	sequence->bits_start = 0;
+	return sequence;
+}
+
 int bit_sequence_get_length(Bit_sequence * code)
 {
-	int result = 0;
-	while (code != NULL)
-	{
-		code = code->next;
-		result++;
-	}
-	return result;
+	return code->bits_count - code->bits_start;
 }
 
 void bit_sequence_free(Bit_sequence * code)
 {
-	while (code != NULL)
-	{
-		Bit_sequence * codePtr = code;
-		code = code->next;
-		free(codePtr);
-	}
+	free(code->bytes);
+	free(code);
 }
 
-Bit_sequence * bit_sequence_from_char(unsigned char c)
+void bit_sequence_append_char(Bit_sequence * code, unsigned char c)
 {
-	Bit_sequence * result = NULL;
+	// TODO: can be optimized with only two shifts
 	unsigned char mask = 1 << 7;
 	for (size_t i = 0; i < 8; i++)
 	{
-		bit_sequence_append(&result, !!(c & mask));
+		bit_sequence_append(code, !!(c & mask));
 		mask >>= 1;
 	}
-	return result;
 }
 
-unsigned char bit_sequence_pop_char(Bit_sequence ** code)
+unsigned char bit_sequence_pop_char(Bit_sequence * code)
 {
+	// TODO: can be optimized with only two shifts
 	unsigned char result = 0;
 	for (size_t i = 0; i < 8; i++)
 	{
 		result <<= 1;
-		result |= (*code)->current_bit;
+		result |= bit_sequence_get_first_bit(code);
 		bit_sequence_remove_first_bit(code);
 	}
 	return result;
 }
 
-void bit_sequence_append(Bit_sequence ** code, unsigned char bit)
+unsigned char bit_sequence_get_first_bit(Bit_sequence * code)
 {
-	Bit_sequence * new_bit = malloc(sizeof(Bit_sequence));
-	new_bit->current_bit = bit;
-	new_bit->next = NULL;
+	unsigned char byte = code->bytes[code->bits_start / 8];
+	unsigned char bit = (byte >> (7-code->bits_start % 8)) & 1;
+	return bit;
+}
 
-	if (*code == NULL)
+void bit_sequence_append(Bit_sequence * code, unsigned char bit)
+{
+	assert(code->bits_count + 1 <= code->bits_capacity);
+
+	if (bit)
 	{
-		*code = new_bit;
+		code->bytes[code->bits_count / 8] |= 1 << (7-code->bits_count % 8);
 	}
 	else
 	{
-		Bit_sequence * codePtr = *code;
-		while (codePtr->next != NULL)
-		{
-			codePtr = codePtr->next;
-		}
-		codePtr->next = new_bit;
+		code->bytes[code->bits_count / 8] &= ~(1 << (7-code->bits_count % 8));
 	}
+
+	code->bits_count++;
 }
 
-void bit_sequence_remove_last_bit(Bit_sequence ** code)
+void bit_sequence_remove_last_bit(Bit_sequence * code)
 {
-	if ((*code) == NULL)
-	{ }
-	else if ((*code)->next == NULL)
-	{
-		free(*code);
-		(*code) = NULL;
-	}
-	else
-	{
-		Bit_sequence * codePtr = *code;
-		while (codePtr->next->next != NULL)
-		{
-			codePtr = codePtr->next;
-		}
-		free(codePtr->next);
-		codePtr->next = NULL;
-	}
+	code->bits_count--;
 }
 
-void bit_sequence_prepend(Bit_sequence * code, unsigned char bit)
+void bit_sequence_remove_first_bit(Bit_sequence * code)
 {
-	Bit_sequence * new_bit = malloc(sizeof(Bit_sequence));
-	new_bit->current_bit = bit;
-	new_bit->next = code;
-
-	code = new_bit;
-}
-
-void bit_sequence_remove_first_bit(Bit_sequence ** code)
-{
-	if ((*code) == NULL)
-	{
-	}
-	else if ((*code)->next == NULL)
-	{
-		free(*code);
-		(*code) = NULL;
-	}
-	else
-	{
-		Bit_sequence * codePtr = *code;
-		*code = (*code)->next;
-		free(codePtr);
-	}
+	code->bits_start++;
 }
 
 Bit_sequence * bit_sequence_copy(Bit_sequence * code)
 {
-	if (code == NULL)
+	Bit_sequence * copy = bit_sequence_create(code->bits_capacity);
+	copy->bits_start = code->bits_start;
+	copy->bits_count = code->bits_count;
+
+	for (size_t i = code->bits_start / 8; i <= code->bits_count / 8; i++)
 	{
-		return NULL;
+		copy->bytes[i] = code->bytes[i];
 	}
-	else
-	{
-		Bit_sequence * first = malloc(sizeof(Bit_sequence));
-		Bit_sequence * current;
 
-		first->current_bit = code->current_bit;
-		current = first;
-
-		while (code->next != NULL)
-		{
-			current->next = malloc(sizeof(Bit_sequence));
-			current->next->current_bit = code->next->current_bit;
-
-			code = code->next;
-			current = current->next;
-		}
-		current->next = NULL;
-
-		return first;
-	}
+	return copy;
 }
 
 Bit_sequence * bit_sequence_concat(Bit_sequence * a, Bit_sequence * b)
 {
-	Bit_sequence * newA = bit_sequence_copy(a);
-	Bit_sequence * newB = bit_sequence_copy(b);
+	Bit_sequence * copy = bit_sequence_copy(a);
+	bit_sequence_append_sequence(copy, b);
+	return copy;
+}
 
-	if (a == NULL) return newB;
-	else if (b == NULL) return newA;
-	else
+void bit_sequence_append_sequence(Bit_sequence * a, Bit_sequence * b)
+{
+	for (size_t i = b->bits_start; i < b->bits_count; i++)
 	{
-		Bit_sequence * lastInA = newA;
-		while (lastInA->next != NULL)
-		{
-			lastInA = lastInA->next;
-		}
-		lastInA->next = newB;
-
-		return newA;
+		unsigned char byte = b->bytes[i / 8];
+		unsigned char bit = (byte >> (7-i % 8)) & 1;
+		bit_sequence_append(a, bit);
 	}
 }
 
-void bit_sequence_append_sequence(Bit_sequence ** a, Bit_sequence * b)
+void bit_sequence_save_and_free(Bit_sequence * a, FILE * output)
 {
-	if (*a == NULL)
+	printf("\n");
+	while (bit_sequence_get_length(a) > 0)
 	{
-		*a = bit_sequence_copy(b);
-	}
-	else if (b == NULL) return;
-	else
-	{
-		Bit_sequence * newB = bit_sequence_copy(b);
-
-		Bit_sequence * lastInA = *a;
-		while (lastInA->next != NULL)
+		// TODO: can be optimized with only two shifts
+		unsigned char byte = 0;
+		for (size_t i = 0; i < 8; i++)
 		{
-			lastInA = lastInA->next;
+			byte <<= 1;
+			byte |= bit_sequence_get_first_bit(a);
+			bit_sequence_remove_first_bit(a);
 		}
-		lastInA->next = newB;
+		fprintf(output, "%c", byte);
 	}
-}
 
-void bit_sequence_save(Bit_sequence * a, FILE * output)
-{
-	unsigned char c = 0;
-	int in_char_position = 0;
-	do
-	{
-		c |= a->current_bit << (7-in_char_position);
-		in_char_position++;
-		if (in_char_position == 8)
-		{
-			fprintf(output, "%c", c);
-			c = 0;
-			in_char_position = 0;
-		}
-		a = a->next;
-		//printf("%d\n", bit_sequence_get_length(a));
-	} while (a != NULL);
-
-	if (in_char_position > 0)
-	{
-		fprintf(output, "%c", c);
-	}
+	bit_sequence_free(a);
 }
 
 Bit_sequence * bit_sequence_load(FILE * f)
 {
-	unsigned char byte, mask;
-	int read = fread(&byte, sizeof(unsigned char), 1, f);
-	Bit_sequence * result = NULL;
+	const int realloc_by = 1024;
+	Bit_sequence * sequence = bit_sequence_create(realloc_by);
+	unsigned char ch;
 
+	size_t read = fread(&ch, 1, 1, f);
 	while (read > 0)
 	{
-		mask = 1 << 7;
-		for (int i = 0; i < 8; i++)
+		if (sequence->bits_count + 8 > sequence->bits_capacity)
 		{
-			bit_sequence_append(&result, !!(byte & mask));
-			mask >>= 1;
+			sequence->bytes = realloc(sequence->bytes, sequence->bits_capacity + realloc_by);
+			sequence->bits_capacity += realloc_by;
 		}
-
-		read = fread(&byte, sizeof(unsigned char), 1, f);
+		bit_sequence_append_char(sequence, ch);
+		read = fread(&ch, 1, 1, f);
 	}
+	return sequence;
+}
 
-	return result;
+void bit_sequence_print(Bit_sequence * a)
+{
+	for (size_t i = a->bits_start; i < a->bits_count; i++)
+	{
+		unsigned char byte = a->bytes[i / 8];
+		unsigned char bit = (byte >> (7-i % 8)) & 1;
+		printf("%i", bit);
+	}
 }

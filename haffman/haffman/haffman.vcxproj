@@ -141,11 +141,13 @@
     <ClCompile Include="main.c" />
     <ClCompile Include="priority_queue.c" />
     <ClCompile Include="bit_sequence.c" />
+    <ClCompile Include="tests.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="item.h" />
     <ClInclude Include="priority_queue.h" />
     <ClInclude Include="bit_sequence.h" />
+    <ClInclude Include="tests.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
