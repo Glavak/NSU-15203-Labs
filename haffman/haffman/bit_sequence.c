@@ -118,18 +118,9 @@ void bit_sequence_append_sequence(Bit_sequence * a, Bit_sequence * b)
 
 void bit_sequence_save_and_free(Bit_sequence * a, FILE * output)
 {
-	printf("\n");
 	while (bit_sequence_get_length(a) > 0)
 	{
-		// TODO: can be optimized with only two shifts
-		unsigned char byte = 0;
-		for (size_t i = 0; i < 8; i++)
-		{
-			byte <<= 1;
-			byte |= bit_sequence_get_first_bit(a);
-			bit_sequence_remove_first_bit(a);
-		}
-		fprintf(output, "%c", byte);
+		fprintf(output, "%c", bit_sequence_pop_char(a));
 	}
 
 	bit_sequence_free(a);
@@ -160,7 +151,7 @@ void bit_sequence_print(Bit_sequence * a)
 	for (size_t i = a->bits_start; i < a->bits_count; i++)
 	{
 		unsigned char byte = a->bytes[i / 8];
-		unsigned char bit = (byte >> (7-i % 8)) & 1;
+		unsigned char bit = (byte >> (7 - i % 8)) & 1;
 		printf("%i", bit);
 	}
 }

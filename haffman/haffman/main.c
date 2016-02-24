@@ -28,7 +28,6 @@ int * get_symbol_frequencies(unsigned char * string, size_t symbols_count)
 Item * get_tree_root(unsigned char * input, size_t symbols_count)
 {
 	int * frequencies = get_symbol_frequencies(input, symbols_count);
-
 	Priority_queue * queue = priority_queue_create();
 
 	for (int i = 0; i < 256; i++)
@@ -45,7 +44,12 @@ Item * get_tree_root(unsigned char * input, size_t symbols_count)
 		priority_queue_insert(queue, new_item);
 	}
 
-	return priority_queue_extract_minimum(queue);
+	Item * result = priority_queue_extract_minimum(queue);
+
+	free(frequencies);
+	free(queue);
+
+	return result;
 }
 
 void build_codes_from_tree_helper(Item * tree_root, Bit_sequence * pre_code, Bit_sequence ** codes)
@@ -75,8 +79,17 @@ Bit_sequence ** build_codes_from_tree(Item * tree_root, int sequence_capacity)
 	Bit_sequence ** result = malloc(sizeof(Bit_sequence *)*256);
 	for (size_t i = 0; i < 256; i++) result[i] = bit_sequence_create(sequence_capacity);
 
-	build_codes_from_tree_helper(tree_root, bit_sequence_create(sequence_capacity), result);
+	Bit_sequence * pre_code = bit_sequence_create(sequence_capacity);
+	build_codes_from_tree_helper(tree_root, pre_code, result);
+	bit_sequence_free(pre_code);
+
 	return result;
+}
+
+void free_codes(Bit_sequence ** codes)
+{
+	for (size_t i = 0; i < 256; i++) bit_sequence_free(codes[i]);
+	free(codes);
 }
 
 unsigned char * read_string(FILE * f, size_t * count)
@@ -164,49 +177,54 @@ void compress(FILE * input, FILE * output)
 	unsigned char * text = read_string(input, &symbols_count);
 
 	// Don't try to compress empty string
-	if (symbols_count == 0) return;
-
-	Bit_sequence * result = bit_sequence_create((symbols_count+5)*8);
-
-	// Fix for files with single byte repeated some times
-	if (is_text_contain_only_symbol(text, symbols_count))
+	if (symbols_count > 0)
 	{
-		bit_sequence_append(result, 0);
-		bit_sequence_append_char(result, text[0]);
+		Bit_sequence * result = bit_sequence_create((symbols_count + 5) * 8);
 
-		bit_sequence_append_char(result, (char)symbols_count);
-	}
-	else
-	{
-		Item * tree = get_tree_root(text, symbols_count);
-
-		Bit_sequence ** codes = build_codes_from_tree(tree, symbols_count*8);
-
-		// Serialize tree and compressed text
-		Bit_sequence * tree_serialized = item_to_sequence(tree, symbols_count*2*8);
-		Bit_sequence * text_serialized = bit_sequence_create(symbols_count * 8);
-		while (symbols_count > 0)
+		// Fix for files with single byte repeated some times
+		if (is_text_contain_only_symbol(text, symbols_count))
 		{
-			bit_sequence_append_sequence(text_serialized, codes[*text]);
-			text++;
-			symbols_count--;
+			bit_sequence_append(result, 0);
+			bit_sequence_append_char(result, text[0]);
+
+			bit_sequence_append_char(result, (char)symbols_count);
+		}
+		else
+		{
+			Item * tree = get_tree_root(text, symbols_count);
+			Bit_sequence ** codes = build_codes_from_tree(tree, symbols_count * 8);
+
+			// Serialize tree and compressed text
+			Bit_sequence * tree_serialized = item_to_sequence(tree, symbols_count * 2 * 8);
+			Bit_sequence * text_serialized = bit_sequence_create(symbols_count * 8);
+			int i = 0;
+			while (symbols_count > 0)
+			{
+				bit_sequence_append_sequence(text_serialized, codes[text[i]]);
+				i++;
+				symbols_count--;
+			}
+
+			item_free(tree);
+			free_codes(codes);
+
+			// Insert separator
+			int total_length = bit_sequence_get_length(tree_serialized) + bit_sequence_get_length(text_serialized) + 1;// + 1 is for 1-bit after next "while"
+			while (total_length % 8 != 0)
+			{
+				bit_sequence_append(tree_serialized, 0);
+				total_length++;
+			}
+			bit_sequence_append(tree_serialized, 1);
+
+			result = bit_sequence_concat(tree_serialized, text_serialized);
+			bit_sequence_free(tree_serialized);
+			bit_sequence_free(text_serialized);
 		}
 
-		// Insert separator
-		int total_length = bit_sequence_get_length(tree_serialized) + bit_sequence_get_length(text_serialized) + 1;// + 1 is for 1-bit after next "while"
-		while (total_length % 8 != 0)
-		{
-			bit_sequence_append(tree_serialized, 0);
-			total_length++;
-		}
-		bit_sequence_append(tree_serialized, 1);
-
-		result = bit_sequence_concat(tree_serialized, text_serialized);
-		bit_sequence_free(tree_serialized);
-		bit_sequence_free(text_serialized);
+		bit_sequence_save_and_free(result, output);
 	}
-
-	bit_sequence_save_and_free(result, output);
+	free(text);
 }
 
 void decompress(FILE * input, FILE * output)
@@ -214,88 +232,96 @@ void decompress(FILE * input, FILE * output)
 	Bit_sequence * bits = bit_sequence_load(input);
 
 	// Don't try to decompress empty data
-	if (bit_sequence_get_length(bits) == 0) return;
-
-	// If the tree contain single element
-	if (bit_sequence_get_first_bit(bits) == 0)
+	if (bit_sequence_get_length(bits) > 0)
 	{
-		bit_sequence_remove_first_bit(bits);
-		unsigned char symbol = bit_sequence_pop_char(bits);
-		unsigned char count = bit_sequence_pop_char(bits);
-
-		for (char i = 0; i < count; i++) fprintf(output, "%c", symbol);
-
-		return;
-	}
-	else
-	{
-		Item * tree = item_from_sequence(bits);
-
-		// Skip separator
-		while (bit_sequence_get_first_bit(bits) == 0) bit_sequence_remove_first_bit(bits);
-		bit_sequence_remove_first_bit(bits);
-
-		while (bit_sequence_get_length(bits) > 0)
+		// If the tree contain single element
+		if (bit_sequence_get_first_bit(bits) == 0)
 		{
-			fprintf(output, "%c", decode_symbol(bits, tree));
+			bit_sequence_remove_first_bit(bits);
+			unsigned char symbol = bit_sequence_pop_char(bits);
+			unsigned char count = bit_sequence_pop_char(bits);
+
+			for (char i = 0; i < count; i++) fprintf(output, "%c", symbol);
+		}
+		else
+		{
+			Item * tree = item_from_sequence(bits);
+
+			// Skip separator
+			while (bit_sequence_get_first_bit(bits) == 0) bit_sequence_remove_first_bit(bits);
+			bit_sequence_remove_first_bit(bits);
+
+			while (bit_sequence_get_length(bits) > 0)
+			{
+				fprintf(output, "%c", decode_symbol(bits, tree));
+			}
+
+			item_free(tree);
 		}
 	}
+	bit_sequence_free(bits);
 }
 
 void print_help(void)
 {
-	printf("-c input output \t to compress\n-d input output \t to decompress");
+	printf("-c[ompress] input output \t to compress\n-d[ecompress] input output \t to decompress");
 }
 
 int main(int argc, char *argv[])
 {
-	run_tests();
-
 	if (argc < 4)
 	{
 		print_help();
 	}
-
-	if (argv[1][0] == '-' && argv[1][1] == 'c')
+	else
 	{
-		// Compressing
 		FILE * input, *output;
 		errno_t inErr = fopen_s(&input, argv[2], "rb");
 		errno_t outErr = fopen_s(&output, argv[3], "wb");
+
+
 		if (outErr || inErr)
 		{
 			printf("Error opening file\n");
 			print_help();
 		}
-		else
+		else if (argv[1][0] == '-' && argv[1][1] == 'c')
 		{
+			// Compressing
 			compress(input, output);
+
+			long input_size = ftell(input);
+			long output_size = ftell(output);
+
+			printf("Compression successfull\n");
+			if (output_size < input_size)
+			{
+				printf("Input file size: %10iB\n", input_size);
+				printf("Output file size: %9iB\n", output_size);
+				printf("Compression rate: %.1f%%", (float)input_size / output_size * 100);
+			}
+
 			fclose(input);
 			fclose(output);
 		}
-	}
-	else if (argv[1][0] == '-' && argv[1][1] == 'd')
-	{
-		// Decompressing
-		FILE * input, *output;
-		errno_t inErr = fopen_s(&input, argv[2], "rb");
-		errno_t outErr = fopen_s(&output, argv[3], "wb");
-		if (inErr || outErr)
+		else if (argv[1][0] == '-' && argv[1][1] == 'd')
 		{
-			printf("Error opening file\n");
-			print_help();
+			// Decompressing
+			decompress(input, output);
+
+			printf("Decompression successfull");
+
+			fclose(input);
+			fclose(output);
 		}
 		else
 		{
-			decompress(input, output);
+			printf("Error: invalid argument\n");
+			print_help();
+
 			fclose(input);
 			fclose(output);
 		}
-	}
-	else
-	{
-		printf("Error: invalid argument\n");
-		print_help();
 	}
 }
 

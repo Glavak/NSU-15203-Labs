@@ -41,8 +41,13 @@ Bit_sequence * item_to_sequence(Item * item, int sequence_capacity)
 	{
 		// Mark that it's node, and write it's children
 		bit_sequence_append(result, 1);
-		bit_sequence_append_sequence(result, item_to_sequence(item->left, sequence_capacity - 8));// TODO: leak
-		bit_sequence_append_sequence(result, item_to_sequence(item->right, sequence_capacity - 8));
+
+		Bit_sequence * left_node = item_to_sequence(item->left, sequence_capacity - 8);
+		Bit_sequence * right_node = item_to_sequence(item->right, sequence_capacity - 8);
+		bit_sequence_append_sequence(result, left_node);
+		bit_sequence_append_sequence(result, right_node);
+		bit_sequence_free(left_node);
+		bit_sequence_free(right_node);
 	}
 
 	return result;
@@ -69,4 +74,14 @@ Item * item_from_sequence(Bit_sequence * code)
 	}
 
 	return new_item;
+}
+
+void item_free(Item * item)
+{
+	if (!item->isItem)
+	{
+		if (item->left != NULL) item_free(item->left);
+		if (item->right != NULL) item_free(item->right);
+	}
+	free(item);
 }
