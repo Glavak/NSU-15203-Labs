@@ -279,7 +279,6 @@ int main(int argc, char *argv[])
 		errno_t inErr = fopen_s(&input, argv[2], "rb");
 		errno_t outErr = fopen_s(&output, argv[3], "wb");
 
-
 		if (outErr || inErr)
 		{
 			printf("Error opening file\n");
@@ -294,10 +293,10 @@ int main(int argc, char *argv[])
 			long output_size = ftell(output);
 
 			printf("Compression successfull\n");
+			printf("Input file size: %10iB\n", input_size);
+			printf("Output file size: %9iB\n", output_size);
 			if (output_size < input_size)
 			{
-				printf("Input file size: %10iB\n", input_size);
-				printf("Output file size: %9iB\n", output_size);
 				printf("Compression rate: %.1f%%", (float)input_size / output_size * 100);
 			}
 
