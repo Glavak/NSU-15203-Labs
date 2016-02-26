@@ -11,26 +11,20 @@ Tree_node * tree_create(ContentType content)
 
 size_t tree_get_height(Tree_node * root)
 {
-	int left_height = 0;
-	int right_height = 0;
+	if (root == NULL) return 0;
 
-	if (root->left != NULL) left_height = tree_get_height(root->left);
-	if (root->right != NULL) right_height = tree_get_height(root->right);
+	int left_height = tree_get_height(root->left);
+	int right_height = tree_get_height(root->right);
 
-	if (left_height > right_height)
-	{
-		return left_height + 1;
-	}
-	else
-	{
-		return right_height + 1;
-	}
+	return (left_height > right_height ? left_height : right_height) + 1;
 }
 
 void tree_free(Tree_node * root)
 {
-	if (root->left != NULL) tree_free(root);
-	if (root->right != NULL) tree_free(root);
+	if (root->left != NULL) tree_free(root->left);
+	if (root->right != NULL) tree_free(root->right);
+
+	free(root);
 }
 
 Tree_node * tree_insert_raw(Tree_node * root, ContentType content, Direction direction)
@@ -52,6 +46,20 @@ Tree_node * tree_insert_raw(Tree_node * root, ContentType content, Direction dir
 	{
 		root->right = tree_create(content);
 		return root->right;
+	}
+}
+
+void tree_delete_node(Tree_node * root, Direction direction)
+{
+	if (direction == LEFT)
+	{
+		tree_free(root->left);
+		root->left = NULL;
+	}
+	else // if (direction == RIGHT)
+	{
+		tree_free(root->right);
+		root->right = NULL;
 	}
 }
 

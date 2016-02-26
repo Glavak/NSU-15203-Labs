@@ -4,4 +4,6 @@
 void main(void)
 {
 	run_tests();
+
+	getchar();
 }

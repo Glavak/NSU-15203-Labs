@@ -22,6 +22,8 @@ void tree_free(Tree_node * root);
 
 Tree_node * tree_insert_raw(Tree_node * root, ContentType content, Direction direction);
 
+void tree_delete_node(Tree_node * root, Direction direction);
+
 Tree_node * tree_insert_balanced(Tree_node * root, ContentType content);
 
 Tree_node * tree_find(Tree_node * root, ContentType data);
