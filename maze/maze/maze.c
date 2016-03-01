@@ -110,6 +110,22 @@ void maze_wave(Maze * maze)
 	printf("Wave haven't reached finish, in isn't connected to start\n");
 }
 
+int _check_neigbour(Maze * maze, int * x, int * y, int offset_x, int offset_y)
+{
+	if (maze->blocks[*y + offset_y][*x + offset_x]->wave_index ==
+		maze->blocks[*y][*x]->wave_index - 1)
+	{
+		*x += offset_x;
+		*y += offset_y;
+		if (maze->blocks[*y][*x]->type == EMPTY)
+		{
+			maze->blocks[*y][*x]->type = PAVEMENT;
+		}
+		return 1;
+	}
+	return 0;
+}
+
 void maze_build_pavement(Maze * maze)
 {
 	int finishX = -1;
@@ -135,48 +151,11 @@ void maze_build_pavement(Maze * maze)
 	// Move back to start:
 	while (maze->blocks[finishY][finishX]->type != START)
 	{
-		if (maze->blocks[finishY + 1][finishX]->wave_index ==
-			maze->blocks[finishY][finishX]->wave_index - 1)
-		{
-			finishY++;
-			if (maze->blocks[finishY][finishX]->type == EMPTY)
-			{
-				maze->blocks[finishY][finishX]->type = PAVEMENT;
-			}
-		}
-		else if (maze->blocks[finishY - 1][finishX]->wave_index ==
-			maze->blocks[finishY][finishX]->wave_index - 1)
-		{
-			finishY--;
-			if (maze->blocks[finishY][finishX]->type == EMPTY)
-			{
-				maze->blocks[finishY][finishX]->type = PAVEMENT;
-			}
-		}
-		else if (maze->blocks[finishY][finishX + 1]->wave_index ==
-			maze->blocks[finishY][finishX]->wave_index - 1)
-		{
-			finishX++;
-			if (maze->blocks[finishY][finishX]->type == EMPTY)
-			{
-				maze->blocks[finishY][finishX]->type = PAVEMENT;
-			}
-		}
-		else if (maze->blocks[finishY][finishX - 1]->wave_index ==
-			maze->blocks[finishY][finishX]->wave_index - 1)
-		{
-			finishX--;
-			if (maze->blocks[finishY][finishX]->type == EMPTY)
-			{
-				maze->blocks[finishY][finishX]->type = PAVEMENT;
-			}
-		}
-		else
-		{
-			// There is something weird otherwise, we'd better stop this function,
-			// until it collapsed into a black hole
-			return;
-		}
+		if (_check_neigbour(maze, &finishX, &finishY, 1, 0)) continue;
+		if (_check_neigbour(maze, &finishX, &finishY, -1, 0)) continue;
+		if (_check_neigbour(maze, &finishX, &finishY, 0, 1)) continue;
+		if (_check_neigbour(maze, &finishX, &finishY, 0, -1)) continue;
+		return;
 	}
 }
 
