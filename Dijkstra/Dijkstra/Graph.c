@@ -1,4 +1,9 @@
+#pragma once
+
 #include "Graph.h"
+#include "priority_queue.h"
+
+#include <stdlib.h>
 
 Graph * graph_create(int vertexCount)
 {
@@ -71,29 +76,30 @@ void graph_dijkstra_run(Graph * graph, int from, Edge * lengths)
 	}
 	lengths[from] = edge_defined_length(0);
 
-	int currentVertex;
-	while ((currentVertex = _get_minimum_unvisited_vertex_number(lengths, visited, graph->vertexCount)) != -1)
+	PriorityQueue * queue = priority_queue_create();
+	priority_queue_insert(queue, from, lengths);
+	
+	while (!priority_queue_is_empty(queue))
 	{
+		int index;
+		priority_queue_extract_minimum(queue, &index);
+		Edge tag = lengths[index];
+
+		if (edge_compare(tag, lengths[index]) < 0) continue;
+
 		for (int i = 0; i < graph->vertexCount; i++)
 		{
-			if (visited[i]) continue;
-			Edge edge = graph_get_edge_length(graph, currentVertex, i);
-			if (edge.isInfinite)
-			{
-				// there are no edge
-				continue;
-			}
+			Edge edge = graph_get_edge_length(graph, index, i);
+			if (edge.isInfinite || edge.isOverflowed) continue;
 
-			Edge new_tag = edge_summ(edge, lengths[currentVertex]);
-
+			Edge new_tag = edge_summ(lengths[index], edge);
 			if (edge_compare(new_tag, lengths[i]) > 0)
 			{
-				// If new_tag < old tag, replace it
 				lengths[i] = new_tag;
+				priority_queue_remove(queue, i);
+				priority_queue_insert(queue, i, lengths);
 			}
 		}
-
-		visited[currentVertex] = 1;// Mark as visited
 	}
 }
 

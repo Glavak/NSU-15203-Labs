@@ -67,11 +67,13 @@
   <ItemGroup>
     <ClInclude Include="Edge.h" />
     <ClInclude Include="Graph.h" />
+    <ClInclude Include="priority_queue.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Edge.c" />
     <ClCompile Include="Graph.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="priority_queue.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

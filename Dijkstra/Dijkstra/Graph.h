@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#pragma once
 
 #include "Edge.h"
 

@@ -1,4 +1,9 @@
+#pragma once
+
 #include "Edge.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 Edge edge_defined_length(int length)
 {
