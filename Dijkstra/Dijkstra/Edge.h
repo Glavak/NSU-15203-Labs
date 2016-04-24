@@ -3,13 +3,14 @@
 typedef struct edge
 {
 	int length;
-	char isInfinite;
-	char isOverflowed;
 } Edge;
 
 Edge edge_defined_length(int length);
-Edge edge_ininite();
+Edge edge_infinite();
 Edge edge_owerflowed();
+
+int edge_is_infinite(Edge e);
+int edge_is_overflowed(Edge e);
 
 // returns positive number if a < b, negative if b < a, 0 if a==b
 int edge_compare(Edge a, Edge b);

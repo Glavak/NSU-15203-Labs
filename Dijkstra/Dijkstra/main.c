@@ -5,12 +5,12 @@
 
 void print_path(Edge * tags, Graph * graph, int from, int to)
 {
-	if (tags[to].isInfinite)
+	if (edge_is_infinite(tags[to]))
 	{
 		printf_s("no path");
 		return;
 	}
-	if (tags[to].isOverflowed)
+	if (edge_is_overflowed(tags[to]))
 	{
 		// Check if there are only one path
 
@@ -22,8 +22,10 @@ void print_path(Edge * tags, Graph * graph, int from, int to)
 			nextCurrent = -1;
 			for (int i = 0; i < graph->vertexCount; i++)
 			{
+				if (current == i) continue;
+
 				Edge edge = graph_get_edge_length(graph, current, i);
-				if (!edge.isInfinite && !edge.isOverflowed &&
+				if (!edge_is_infinite(edge) &&
 					edge_compare(edge_summ(tags[i], edge), tags[current]) == 0)
 				{
 					if (nextCurrent == -1)
@@ -50,7 +52,7 @@ void print_path(Edge * tags, Graph * graph, int from, int to)
 		for (int i = 0; i < graph->vertexCount; i++)
 		{
 			Edge edge = graph_get_edge_length(graph, current, i);
-			if (!edge.isInfinite && !edge.isOverflowed &&
+			if (!edge_is_infinite(edge) && !edge_is_overflowed(edge) &&
 				edge_compare(edge_summ(tags[i], edge), tags[current]) == 0)
 			{
 				// If there is an edge between current and i,

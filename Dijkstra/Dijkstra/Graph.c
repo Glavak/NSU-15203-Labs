@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graph.h"
+#include "Edge.h"
 #include "priority_queue.h"
 
 #include <stdlib.h>
@@ -17,7 +18,7 @@ Graph * graph_create(int vertexCount)
 
 		for (int j = 0; j < vertexCount; j++)
 		{
-			graph->edges[i][j] = edge_ininite();
+			graph->edges[i][j] = edge_infinite();
 		}
 	}
 
@@ -71,7 +72,7 @@ void graph_dijkstra_run(Graph * graph, int from, Edge * lengths)
 	// Set all vertex tags to infinity, and mark them as unvisited
 	for (int i = 0; i < graph->vertexCount; i++)
 	{
-		lengths[i] = edge_ininite();
+		lengths[i] = edge_infinite();
 		visited[i] = 0;
 	}
 	lengths[from] = edge_defined_length(0);
@@ -90,7 +91,7 @@ void graph_dijkstra_run(Graph * graph, int from, Edge * lengths)
 		for (int i = 0; i < graph->vertexCount; i++)
 		{
 			Edge edge = graph_get_edge_length(graph, index, i);
-			if (edge.isInfinite || edge.isOverflowed) continue;
+			if (edge_is_infinite(edge) || edge_is_overflowed(edge)) continue;
 
 			Edge new_tag = edge_summ(lengths[index], edge);
 			if (edge_compare(new_tag, lengths[i]) > 0)
