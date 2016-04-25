@@ -3,67 +3,35 @@
 
 #include "Graph.h"
 
-void print_path(Edge * tags, Graph * graph, int from, int to)
+void print_path(int * pathBack, int from, int to)
 {
-	if (edge_is_infinite(tags[to]))
-	{
-		printf_s("no path");
-		return;
-	}
-	if (edge_is_overflowed(tags[to]))
-	{
-		// Check if there are only one path
-
-		int current = to;
-		int nextCurrent;
-
-		do
-		{
-			nextCurrent = -1;
-			for (int i = 0; i < graph->vertexCount; i++)
-			{
-				if (current == i) continue;
-
-				Edge edge = graph_get_edge_length(graph, current, i);
-				if (!edge_is_infinite(edge) &&
-					edge_compare(edge_summ(tags[i], edge), tags[current]) == 0)
-				{
-					if (nextCurrent == -1)
-					{
-						nextCurrent = i;
-					}
-					else
-					{
-						// this is second possible path
-						printf_s("overflow");
-						return;
-					}
-				}
-			}
-			current = nextCurrent;
-		} while (current != from);
-
-	}
+	// Check
 	int current = to;
-	do
+	while (current != from)
 	{
-		printf_s("%d ", current + 1);
-
-		for (int i = 0; i < graph->vertexCount; i++)
+		if (pathBack[current] == -1)
 		{
-			Edge edge = graph_get_edge_length(graph, current, i);
-			if (!edge_is_infinite(edge) && !edge_is_overflowed(edge) &&
-				edge_compare(edge_summ(tags[i], edge), tags[current]) == 0)
-			{
-				// If there is an edge between current and i,
-				// and tag[i] + this edge == tag[current]
-				current = i;
-				break;
-			}
+			printf("no path");
+			return;
 		}
-	} while (current != from);
 
-	printf_s("%d", from + 1);
+		if (pathBack[current] == -2)
+		{
+			printf("overflow");
+			return;
+		}
+
+		else
+		{
+			current = pathBack[current];
+		}
+	}
+
+	for (int i = to; i != from; i = pathBack[i])
+	{
+		printf("%d ", i + 1);
+	}
+	printf("%d", from+1);
 }
 
 void main()
@@ -114,7 +82,9 @@ void main()
 	}
 
 	Edge * lengths = malloc(sizeof(Edge)*N);
-	graph_dijkstra_run(graph, S, lengths);
+	int * path = malloc(sizeof(int)*N);
+	for (int i = 0; i < N; i++) path[i] = -1;
+	graph_dijkstra_run(graph, S, path, lengths);
 
 	// Print lengths to verticies
 	for (int i = 0; i < N; i++)
@@ -124,7 +94,7 @@ void main()
 
 	printf_s("\n");
 
-	print_path(lengths, graph, S, F);
+	print_path(path, S, F);
 
 	getchar();
 }

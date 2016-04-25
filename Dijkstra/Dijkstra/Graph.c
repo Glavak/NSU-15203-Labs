@@ -65,7 +65,7 @@ int _get_minimum_unvisited_vertex_number(Edge * tags, char * visited, int N)
 	return minimum_number;
 }
 
-void graph_dijkstra_run(Graph * graph, int from, Edge * lengths)
+void graph_dijkstra_run(Graph * graph, int from, int * pathBack, Edge * lengths)
 {
 	char * visited = malloc(sizeof(char) * graph->vertexCount);
 
@@ -94,11 +94,16 @@ void graph_dijkstra_run(Graph * graph, int from, Edge * lengths)
 			if (edge_is_infinite(edge) || edge_is_overflowed(edge)) continue;
 
 			Edge new_tag = edge_summ(lengths[index], edge);
-			if (edge_compare(new_tag, lengths[i]) > 0)
+			Edge old_tag;
+			if (edge_compare(new_tag, lengths[i]) >= 0)
 			{
+				old_tag = lengths[i];
 				lengths[i] = new_tag;
+				pathBack[i] = index;
 				priority_queue_remove(queue, i);
 				priority_queue_insert(queue, i, lengths);
+				if (edge_is_overflowed(new_tag) && edge_is_overflowed(old_tag))
+					pathBack[i] = -2;
 			}
 		}
 	}
